@@ -42,7 +42,7 @@ func (s *OpsService) Create(ctx context.Context, record OpsRecord) (OpsRecord, e
 	}
 	record.CreatedAt = s.clock.Stamp()
 	record.UpdatedAt = record.CreatedAt
-	if err := s.store.Put(context.Background(), record); err != nil {
+	if err := s.store.Put(ctx, record); err != nil {
 		return OpsRecord{}, wrapOps("create", "store.put", err)
 	}
 	s.audit.Add(record.ID, "created", record.Owner)
@@ -52,7 +52,7 @@ func (s *OpsService) Get(ctx context.Context, id string) (OpsRecord, error) {
 	return s.store.Get(ctx, id)
 }
 func (s *OpsService) Search(ctx context.Context, q OpsQuery) (OpsPage, error) {
-	items, err := s.store.List(context.Background())
+	items, err := s.store.List(ctx)
 	if err != nil {
 		return OpsPage{}, err
 	}
@@ -68,7 +68,7 @@ func (s *OpsService) Search(ctx context.Context, q OpsQuery) (OpsPage, error) {
 	return OpsPage{Items: filtered[start:end], Page: q.Page, PageSize: q.PageSize, Total: len(filtered), HasNext: end < len(filtered)}, nil
 }
 func (s *OpsService) Transition(ctx context.Context, id string, expected int, target OpsStatus, actor string) (OpsRecord, error) {
-	ctx, cancel := opsContext(context.Background(), 3*time.Second)
+	ctx, cancel := opsContext(ctx, 3*time.Second)
 	defer cancel()
 	record, err := s.store.Get(ctx, id)
 	if err != nil {

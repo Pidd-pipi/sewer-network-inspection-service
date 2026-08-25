@@ -12,6 +12,11 @@ var opsTransitionTable = map[OpsStatus]map[OpsStatus]bool{
 	OpsStatusClosed: {},
 }
 
+// opsStateHistoryCap bounds the retained transition history so that a high
+// request volume cannot grow memory without limit. Older entries are dropped
+// once the cap is reached.
+const opsStateHistoryCap = 2000
+
 type OpsTransition struct {
 	From   OpsStatus
 	To     OpsStatus
@@ -38,6 +43,10 @@ func (m *OpsStateMachine) Move(from, to OpsStatus, reason string) error {
 		return fmt.Errorf("%w: %s to %s", ErrOpsTransition, from, to)
 	}
 	m.history = append(m.history, OpsTransition{From: from, To: to, Reason: reason})
+	if len(m.history) > opsStateHistoryCap {
+		// Drop the oldest entries to keep history bounded.
+		m.history = m.history[len(m.history)-opsStateHistoryCap:]
+	}
 	return nil
 }
 func (m *OpsStateMachine) History() []OpsTransition {

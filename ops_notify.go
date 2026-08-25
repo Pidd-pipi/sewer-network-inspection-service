@@ -40,6 +40,10 @@ func (n *OpsNotifier) Queue(recordID, channel, message string) {
 		Message:  message,
 		QueuedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	})
+	if len(n.outbox) > opsNotifierCap {
+		// Drop the oldest notices to keep the outbox bounded.
+		n.outbox = n.outbox[len(n.outbox)-opsNotifierCap:]
+	}
 }
 
 func (n *OpsNotifier) Pending() int {

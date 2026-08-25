@@ -42,6 +42,10 @@ func (m *OpsMetrics) Record(method, path string, status, latencyMS int) {
 		LatencyMS:  latencyMS,
 		RecordedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	})
+	if len(m.samples) > opsMetricsCap {
+		// Drop the oldest samples to keep the metrics buffer bounded.
+		m.samples = m.samples[len(m.samples)-opsMetricsCap:]
+	}
 	m.requests++
 	if status >= 500 {
 		m.errors++
