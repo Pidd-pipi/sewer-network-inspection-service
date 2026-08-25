@@ -77,13 +77,22 @@ func (s *OpsService) Transition(ctx context.Context, id string, expected int, ta
 	if expected > 0 && expected != record.Revision {
 		return OpsRecord{}, ErrOpsConflict
 	}
-	if err := s.state.Move(record.Status, target, "operator update"); err != nil {
-		return OpsRecord{}, err
+	// Validate the transition without mutating state-machine history. Move()
+	// appends to history, so calling it before the store commits would record a
+	// transition for a rejected update (e.g. a lost concurrent race) and let two
+	// racing operators both append history even though only one write wins.
+	if !s.state.CanMove(record.Status, target) {
+		return OpsRecord{}, fmt.Errorf("%w: %s to %s", ErrOpsTransition, record.Status, target)
 	}
+	from := record.Status
 	record.Status = target
 	if err := s.store.Update(ctx, record, expected); err != nil {
 		return OpsRecord{}, err
 	}
+	// Only record the transition once the store write has committed. The
+	// expected-revision guard guarantees the record did not change between the
+	// read and the write, so `from` reflects the committed from→to transition.
+	s.state.Move(from, target, "operator update")
 	fresh, err := s.store.Get(ctx, id)
 	if err != nil {
 		return OpsRecord{}, err
