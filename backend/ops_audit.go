@@ -18,9 +18,12 @@ type OpsAudit struct {
 
 func newOpsAudit() *OpsAudit { return &OpsAudit{events: []OpsEvent{}} }
 func (a *OpsAudit) Add(recordID, typ, actor string) OpsEvent {
+	return a.AddWithDetails(recordID, typ, actor, nil)
+}
+func (a *OpsAudit) AddWithDetails(recordID, typ, actor string, details map[string]string) OpsEvent {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	event := OpsEvent{ID: newOpsAuditID(), RecordID: recordID, Type: typ, Actor: actor, At: time.Now().UTC().Format(time.RFC3339Nano)}
+	event := OpsEvent{ID: newOpsAuditID(), RecordID: recordID, Type: typ, Actor: actor, At: time.Now().UTC().Format(time.RFC3339Nano), Details: details}
 	a.events = append(a.events, event)
 	return event
 }
