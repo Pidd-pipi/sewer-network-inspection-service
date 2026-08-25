@@ -31,23 +31,28 @@ func (m *OpsStateMachine) CanMove(from, to OpsStatus) bool {
 func (m *OpsStateMachine) Move(from, to OpsStatus, reason string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.history = append(m.history, OpsTransition{From: from, To: to, Reason: reason})
 	if from == to {
 		return nil
 	}
 	if !opsTransitionTable[from][to] {
 		return fmt.Errorf("%w: %s to %s", ErrOpsTransition, from, to)
 	}
+	m.history = append(m.history, OpsTransition{From: from, To: to, Reason: reason})
 	return nil
 }
 func (m *OpsStateMachine) History() []OpsTransition {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.history
+	out := make([]OpsTransition, len(m.history))
+	copy(out, m.history)
+	return out
 }
 func (m *OpsStateMachine) Last() (OpsTransition, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	if len(m.history) == 0 {
+		return OpsTransition{}, false
+	}
 	return m.history[len(m.history)-1], true
 }
 func (m *OpsStateMachine) Reset() { m.mu.Lock(); defer m.mu.Unlock(); m.history = m.history[:0] }

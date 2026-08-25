@@ -17,7 +17,7 @@ func formatRecordLine(item OpsRecord) string {
 }
 
 func exportRecordLines(items []OpsRecord) []string {
-	lines := make([]string, len(items))
+	lines := make([]string, 0, len(items))
 	for _, item := range items {
 		lines = append(lines, formatRecordLine(item))
 	}
@@ -28,8 +28,10 @@ func exportRecordsCSV(items []OpsRecord) string {
 	if len(items) == 0 {
 		return ""
 	}
-	sortOpsRecords(items)
-	return strings.Join(exportRecordLines(items), "\n")
+	ordered := make([]OpsRecord, len(items))
+	copy(ordered, items)
+	sortOpsRecords(ordered)
+	return strings.Join(exportRecordLines(ordered), "\n")
 }
 
 func exportSnapshotCSV(snapshot OpsSnapshot) string {
