@@ -42,6 +42,10 @@ func newRouter(store *InspectionStore) http.Handler {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 			return
 		}
+		if errors.Is(err, errInspectionTransition) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusOK, item)
 	})
 	return mux

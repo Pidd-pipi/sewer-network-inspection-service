@@ -37,6 +37,9 @@ func (s *InspectionStore) changeStatus(id, status string) (Inspection, error) {
 	if !ok {
 		return Inspection{}, errInspectionNotFound
 	}
+	if !canTransitionInspection(item.Status, status) {
+		return Inspection{}, errInspectionTransition
+	}
 	item.Status = status
 	s.items[id] = item
 	return item, nil
