@@ -8,6 +8,10 @@ import (
 
 func healthHandler(service string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": service, "time": time.Now().UTC().Format(time.RFC3339)})
 	}
 }

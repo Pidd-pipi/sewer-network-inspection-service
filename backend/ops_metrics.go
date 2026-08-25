@@ -46,12 +46,24 @@ func (m *OpsMetrics) Record(method, path string, status, latencyMS int) {
 	if status >= 500 {
 		m.errors++
 	}
+	// Keep only the most recent samples so the buffer does not grow without bound.
+	if len(m.samples) > opsMetricsCap {
+		// Drop the oldest entries and copy into a fresh backing array so the
+		// discarded slots can be garbage collected rather than retained.
+		kept := make([]OpsMetric, opsMetricsCap)
+		copy(kept, m.samples[len(m.samples)-opsMetricsCap:])
+		m.samples = kept
+	}
 }
 
 func (m *OpsMetrics) Snapshot() []OpsMetric {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.samples
+	// Return a defensive copy so callers can mutate the result without
+	// corrupting the internal samples (and vice versa).
+	out := make([]OpsMetric, len(m.samples))
+	copy(out, m.samples)
+	return out
 }
 
 func (m *OpsMetrics) Summary() OpsMetricSummary {
@@ -59,13 +71,13 @@ func (m *OpsMetrics) Summary() OpsMetricSummary {
 	defer m.mu.RUnlock()
 	total := len(m.samples)
 	if total == 0 {
-		return OpsMetricSummary{}
+		return OpsMetricSummary{Requests: m.requests, Errors: m.errors}
 	}
 	var latency int
 	for _, sample := range m.samples {
 		latency += sample.LatencyMS
 	}
-	return OpsMetricSummary{Requests: m.requests, Errors: 0, AvgLatencyMS: latency / total}
+	return OpsMetricSummary{Requests: m.requests, Errors: m.errors, AvgLatencyMS: latency / total}
 }
 
 func (m *OpsMetrics) Clear() {
