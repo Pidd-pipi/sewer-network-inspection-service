@@ -27,23 +27,22 @@ func (e *OpsError) Error() string {
 }
 func (e *OpsError) Unwrap() error { return e.Cause }
 func wrapOps(code, operation string, cause error) error {
-	return fmt.Errorf("%s: %s: %v", code, operation, cause)
+	return &OpsError{Code: code, Operation: operation, Cause: cause}
 }
 func opsCode(err error) string {
-	var typed *OpsError
-	if errors.As(err, &typed) {
-		return typed.Code
+	if err == nil {
+		return ""
 	}
 	switch {
-	case err == ErrOpsNotFound:
+	case errors.Is(err, ErrOpsNotFound):
 		return "not_found"
-	case err == ErrOpsConflict:
+	case errors.Is(err, ErrOpsConflict):
 		return "conflict"
-	case err == ErrOpsInvalid:
+	case errors.Is(err, ErrOpsInvalid):
 		return "invalid"
-	case err == ErrOpsTransition:
+	case errors.Is(err, ErrOpsTransition):
 		return "transition"
-	case err == ErrOpsPolicy:
+	case errors.Is(err, ErrOpsPolicy):
 		return "policy"
 	default:
 		return "internal"

@@ -42,7 +42,7 @@ func opsRecordsHandler(service *OpsService) http.HandlerFunc {
 		case http.MethodPost:
 			var record OpsRecord
 			if err := json.NewDecoder(r.Body).Decode(&record); err != nil {
-				opsJSON(w, http.StatusInternalServerError, map[string]string{"error": "invalid request body"})
+				opsJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 				return
 			}
 			created, err := service.Create(r.Context(), record)
@@ -75,7 +75,7 @@ func opsRecordHandler(service *OpsService) http.HandlerFunc {
 			Expected int       `json:"expectedRevision"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || !opsStatusValid(body.Status) {
-			opsJSON(w, http.StatusInternalServerError, map[string]string{"error": "valid status is required"})
+			opsJSON(w, http.StatusBadRequest, map[string]string{"error": "valid status is required"})
 			return
 		}
 		updated, err := service.Transition(r.Context(), id, body.Expected, body.Status, opsActorFromRequest(r))
@@ -110,5 +110,16 @@ func opsRulesHandler() http.HandlerFunc {
 }
 
 func opsHTTPStatus(err error) int {
-	return http.StatusInternalServerError
+	switch opsCode(err) {
+	case "not_found":
+		return http.StatusNotFound
+	case "conflict":
+		return http.StatusConflict
+	case "invalid", "policy":
+		return http.StatusUnprocessableEntity
+	case "transition":
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
 }
